@@ -1,0 +1,21 @@
+[package]
+name = "licens"
+version = "0.1.0"
+edition = "2021"
+description = "A CLI tool that generates project licenses and audits dependency licenses in one pass"
+readme = "README.md"
+license = "MIT"
+
+[dependencies]
+clap = { version = "4.5", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+thiserror = "2.0"
+chrono = "0.4"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
+
+[dev-dependencies]
+assert_cmd = "2.0"
+predicates = "3.1"
