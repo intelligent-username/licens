@@ -13,14 +13,23 @@ pub struct ManifestScanner;
 
 impl ManifestScanner {
     pub fn scan_current_dir(include_dev: bool, include_build: bool) -> Result<ScannedProject> {
+        Self::scan_dir(Path::new("."), include_dev, include_build)
+    }
+
+    pub fn scan_dir(
+        dir: &Path,
+        include_dev: bool,
+        include_build: bool,
+    ) -> Result<ScannedProject> {
         let mut all_deps = Vec::new();
         let mut detected_license = None;
         let mut found_any = false;
 
         // 1. Cargo.toml
-        if Path::new("Cargo.toml").exists() {
+        let cargo_path = dir.join("Cargo.toml");
+        if cargo_path.exists() {
             found_any = true;
-            let (lic, deps) = Self::scan_cargo_toml(include_dev, include_build)?;
+            let (lic, deps) = Self::scan_cargo_toml(dir, include_dev, include_build)?;
             if detected_license.is_none() {
                 detected_license = lic;
             }
@@ -28,9 +37,10 @@ impl ManifestScanner {
         }
 
         // 2. package.json
-        if Path::new("package.json").exists() {
+        let package_json_path = dir.join("package.json");
+        if package_json_path.exists() {
             found_any = true;
-            let (lic, deps) = Self::scan_package_json(include_dev)?;
+            let (lic, deps) = Self::scan_package_json(dir, include_dev)?;
             if detected_license.is_none() {
                 detected_license = lic;
             }
@@ -38,9 +48,10 @@ impl ManifestScanner {
         }
 
         // 3. pyproject.toml
-        if Path::new("pyproject.toml").exists() {
+        let pyproject_path = dir.join("pyproject.toml");
+        if pyproject_path.exists() {
             found_any = true;
-            let (lic, deps) = Self::scan_pyproject_toml(include_dev)?;
+            let (lic, deps) = Self::scan_pyproject_toml(dir, include_dev)?;
             if detected_license.is_none() {
                 detected_license = lic;
             }
@@ -58,10 +69,11 @@ impl ManifestScanner {
     }
 
     fn scan_cargo_toml(
+        dir: &Path,
         include_dev: bool,
         include_build: bool,
     ) -> Result<(Option<String>, Vec<Dependency>)> {
-        let content = fs::read_to_string("Cargo.toml")?;
+        let content = fs::read_to_string(dir.join("Cargo.toml"))?;
         let table: toml::Table = toml::from_str(&content)?;
 
         let detected_license = table
@@ -147,8 +159,11 @@ impl ManifestScanner {
         Ok((detected_license, deps))
     }
 
-    fn scan_package_json(include_dev: bool) -> Result<(Option<String>, Vec<Dependency>)> {
-        let content = fs::read_to_string("package.json")?;
+    fn scan_package_json(
+        dir: &Path,
+        include_dev: bool,
+    ) -> Result<(Option<String>, Vec<Dependency>)> {
+        let content = fs::read_to_string(dir.join("package.json"))?;
         let json: serde_json::Value = serde_json::from_str(&content)?;
 
         let detected_license = json
@@ -190,8 +205,11 @@ impl ManifestScanner {
         Ok((detected_license, deps))
     }
 
-    fn scan_pyproject_toml(include_dev: bool) -> Result<(Option<String>, Vec<Dependency>)> {
-        let content = fs::read_to_string("pyproject.toml")?;
+    fn scan_pyproject_toml(
+        dir: &Path,
+        include_dev: bool,
+    ) -> Result<(Option<String>, Vec<Dependency>)> {
+        let content = fs::read_to_string(dir.join("pyproject.toml"))?;
         let table: toml::Table = toml::from_str(&content)?;
 
         let mut detected_license = None;
