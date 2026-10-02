@@ -19,9 +19,6 @@ pub enum LicensError {
 
     #[error("No supported package manifest found in current directory.")]
     ManifestNotFound,
-
-    #[error("{0}")]
-    General(String),
 }
 
 pub type Result<T> = std::result::Result<T, LicensError>;

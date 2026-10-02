@@ -51,9 +51,3 @@ pub enum OutputFormat {
     Markdown,
     Json,
 }
-
-impl Default for OutputFormat {
-    fn default() -> Self {
-        OutputFormat::Markdown
-    }
-}
