@@ -4,7 +4,7 @@ use clap::{Parser, Subcommand};
 #[command(
     name = "licens",
     version,
-    about = "Generate project licenses and audit dependency licenses in one pass",
+    about = "Add a license file to your project",
     long_about = None
 )]
 pub struct Cli {
@@ -34,21 +34,6 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-    /// Audit dependency licenses in the current project
-    Audit {
-        /// Output audit results format: 'markdown' or 'json'
-        #[arg(short, long, default_value = "markdown")]
-        format: String,
-
-        /// Include dev dependencies in audit
-        #[arg(long)]
-        dev: bool,
-
-        /// Include build dependencies in audit
-        #[arg(long)]
-        build: bool,
-    },
-
     /// List all supported license templates
     List,
 
