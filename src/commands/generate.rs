@@ -30,8 +30,11 @@ fn confirm_overwrite(input: &mut impl BufRead, output: &mut impl Write) -> io::R
 }
 
 pub fn run(opts: GenerateOptions) -> Result<()> {
-    let template = find_license(&opts.license_key)
-        .ok_or_else(|| LicensError::UnsupportedLicense(opts.license_key.clone()))?;
+    let template = match find_license(&opts.license_key) {
+        Some(template) => template,
+        None => crate::aliases::find_alias(&opts.license_key)?
+            .ok_or_else(|| LicensError::UnsupportedLicense(opts.license_key.clone()))?,
+    };
 
     let author_info = AuthorInfo::resolve(opts.author_name, opts.author_email, opts.year);
     let author_display = if let Some(ref email) = author_info.email {

@@ -36,6 +36,20 @@ licens mit --force
 
 Directories, symbolic links, and other non-regular destinations are not overwritten, even with `--force`.
 
+## License aliases
+
+Save a shortcut once and use it in any project:
+
+```sh
+licens assign m=mit
+licens m
+licens generate m --author "Jane Doe" --output LICENSE.md
+```
+
+Aliases are case-insensitive. Names must start with an ASCII letter and contain only letters, digits, `-`, or `_`. Existing license keys, SPDX identifiers, full license names, and command names are reserved. Targets must be built-in licenses, not other aliases. Running `assign` again updates that alias without changing the others.
+
+Aliases are stored in a small `licens/aliases.json` file under your user configuration directory: `%APPDATA%` on Windows, `~/Library/Application Support` on macOS, and `$XDG_CONFIG_HOME` (or `~/.config`) on Linux. They are not stored in your project. Built-in licenses work independently of this file.
+
 ## Author and year
 
 Name and email are resolved separately, in this order:

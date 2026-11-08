@@ -17,6 +17,9 @@ fn run() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
+        Some(Commands::Assign { assignment }) => {
+            licens::aliases::assign(&assignment)?;
+        }
         Some(Commands::List) => {
             run_list()?;
         }

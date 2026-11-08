@@ -11,7 +11,7 @@ pub struct Cli {
     #[command(subcommand)]
     pub command: Option<Commands>,
 
-    /// License template key (e.g. mit, apache-2.0) when used directly: 'licens mit'
+    /// License template key or saved alias (e.g. mit, apache-2.0)
     #[arg(index = 1)]
     pub license: Option<String>,
 
@@ -38,12 +38,18 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
+    /// Save a user-wide license alias (e.g. m=mit)
+    Assign {
+        /// Alias assignment in the form <alias>=<license>
+        assignment: String,
+    },
+
     /// List all supported license templates
     List,
 
     /// Generate a license file for the project
     Generate {
-        /// License identifier (e.g. mit, apache-2.0, gpl-3.0)
+        /// License identifier or saved alias (e.g. mit, apache-2.0)
         license: String,
     },
 }

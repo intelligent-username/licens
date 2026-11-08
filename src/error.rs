@@ -2,6 +2,9 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum LicensError {
+    #[error("{0}")]
+    Alias(String),
+
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
 
