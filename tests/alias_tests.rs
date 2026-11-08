@@ -290,11 +290,11 @@ fn list_shows_saved_aliases_beside_originals_without_color_when_captured() {
     success(&output);
     let text = String::from_utf8(output.stdout).unwrap();
     assert!(text.contains("ORIGINAL") && text.contains("ALIASES"));
-    let mit_row = text.lines().find(|row| row.starts_with("mit ")).unwrap();
+    let mit_row = text.lines().find(|row| row.starts_with("│ mit ")).unwrap();
     assert!(mit_row.contains("m, mine"));
     assert!(text
         .lines()
-        .any(|row| row.starts_with("apache-2.0") && row.contains(" a ")));
+        .any(|row| row.starts_with("│ apache-2.0") && row.contains(" a ")));
     assert!(!text.contains('\x1b'));
     assert_eq!(fs::read(path).unwrap(), original_config);
 }

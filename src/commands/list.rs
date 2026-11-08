@@ -1,21 +1,11 @@
 use std::collections::BTreeMap;
-use std::env;
-use std::io::{self, IsTerminal};
 
+use crate::cli::{paint, table, use_color};
 use crate::error::Result;
 use crate::preferences;
 use crate::templates::{find_license, LICENSES};
 
-fn cell(value: &str, width: usize, color: &str, use_color: bool) -> String {
-    let padded = format!("{value:<width$}");
-    if use_color {
-        format!("{color}{padded}\x1b[0m")
-    } else {
-        padded
-    }
-}
-
-fn render(aliases: &BTreeMap<String, String>, use_color: bool) -> String {
+fn render(aliases: &BTreeMap<String, String>, color: bool) -> String {
     let aliases_by_license: Vec<String> = LICENSES
         .iter()
         .map(|license| {
@@ -29,35 +19,49 @@ fn render(aliases: &BTreeMap<String, String>, use_color: bool) -> String {
                 .join(", ")
         })
         .collect();
-    let alias_width = aliases_by_license
+    let rows: Vec<Vec<String>> = LICENSES
         .iter()
-        .map(String::len)
-        .max()
-        .unwrap_or(0)
-        .max("ALIASES".len());
+        .zip(&aliases_by_license)
+        .map(|(license, aliases)| {
+            vec![
+                license.key.into(),
+                if aliases.is_empty() {
+                    "—".into()
+                } else {
+                    aliases.clone()
+                },
+                license.spdx_id.into(),
+                license.category.as_str().into(),
+                license.name.into(),
+            ]
+        })
+        .collect();
     let mut output = format!(
-        "{} {} {:<15} {:<18} NAME\n{}\n",
-        cell("ORIGINAL", 15, "\x1b[32m", use_color),
-        cell("ALIASES", alias_width, "\x1b[36m", use_color),
-        "SPDX ID",
-        "CATEGORY",
-        "-".repeat(71 + alias_width)
+        "\n{}  {}\n{}\n\n",
+        paint("licens", "1;36", color),
+        paint("/ License catalog", "90", color),
+        paint(
+            &format!(
+                "{} built-in licenses · {} saved aliases",
+                LICENSES.len(),
+                aliases.len()
+            ),
+            "90",
+            color
+        )
     );
-
-    for (license, aliases) in LICENSES.iter().zip(&aliases_by_license) {
-        let aliases = if aliases.is_empty() { "-" } else { aliases };
-        output.push_str(&format!(
-            "{} {} {:<15} {:<18} {}\n",
-            cell(license.key, 15, "\x1b[32m", use_color),
-            cell(aliases, alias_width, "\x1b[36m", use_color),
-            license.spdx_id,
-            license.category.as_str(),
-            license.name
-        ));
-    }
-    output.push_str(
-        "\nUse an original key or alias: 'licens mit' or 'licens m' after 'licens assign m=mit'.\n",
-    );
+    output.push_str(&table(
+        &["ORIGINAL", "ALIASES", "SPDX ID", "CATEGORY", "LICENSE"],
+        &rows,
+        &["32", "36", "90", "0", "0"],
+        color,
+    ));
+    output.push_str(&format!(
+        "\n{} originals  /  {} aliases\n",
+        paint("Green", "32", color),
+        paint("Cyan", "36", color)
+    ));
+    output.push_str("\nCreate a license  →  licens mit\nSave a shortcut   →  licens assign m=mit\nUse your shortcut →  licens m\n");
     output
 }
 
@@ -69,10 +73,7 @@ pub fn run() -> Result<()> {
             BTreeMap::new()
         }
     };
-    let use_color = io::stdout().is_terminal()
-        && env::var_os("NO_COLOR").is_none_or(|value| value.is_empty())
-        && env::var("TERM").as_deref() != Ok("dumb");
-    print!("{}", render(&aliases, use_color));
+    print!("{}", render(&aliases, use_color()));
     Ok(())
 }
 
@@ -101,11 +102,14 @@ mod tests {
             ("a".to_owned(), "apache-2.0".to_owned()),
         ]);
         let output = render(&aliases, false);
-        let mit = output.lines().find(|row| row.starts_with("mit ")).unwrap();
+        let mit = output
+            .lines()
+            .find(|row| row.starts_with("│ mit "))
+            .unwrap();
         assert!(mit.contains("m, mine"));
         assert!(output
             .lines()
-            .any(|row| row.starts_with("apache-2.0") && row.contains(" a ")));
+            .any(|row| row.starts_with("│ apache-2.0") && row.contains(" a ")));
         assert!(!output.contains('\x1b'));
         assert_eq!(
             output
