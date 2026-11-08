@@ -2,7 +2,10 @@ use crate::error::Result;
 use crate::templates::LICENSES;
 
 pub fn run() -> Result<()> {
-    println!("{:<15} {:<15} {:<18} {}", "KEY", "SPDX ID", "CATEGORY", "NAME");
+    println!(
+        "{:<15} {:<15} {:<18} {}",
+        "KEY", "SPDX ID", "CATEGORY", "NAME"
+    );
     println!("{}", "-".repeat(70));
 
     for lic in LICENSES {

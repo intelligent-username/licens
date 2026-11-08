@@ -27,20 +27,8 @@ fn run() -> Result<()> {
                 author_name: cli.author,
                 author_email: cli.email,
                 year: cli.year,
+                force: cli.force,
             })?;
-        }
-        Some(Commands::External(args)) => {
-            if let Some(license_key) = args.first() {
-                run_generate(GenerateOptions {
-                    license_key: license_key.clone(),
-                    output_path: cli.output,
-                    author_name: cli.author,
-                    author_email: cli.email,
-                    year: cli.year,
-                })?;
-            } else {
-                run_list()?;
-            }
         }
         None => {
             if let Some(license_key) = cli.license {
@@ -50,6 +38,7 @@ fn run() -> Result<()> {
                     author_name: cli.author,
                     author_email: cli.email,
                     year: cli.year,
+                    force: cli.force,
                 })?;
             } else {
                 run_list()?;

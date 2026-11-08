@@ -26,6 +26,20 @@ pub struct LicenseTemplate {
 }
 
 impl LicenseTemplate {
+    pub fn needs_author(&self) -> bool {
+        [
+            "[author]",
+            "[fullname]",
+            "<COPYRIGHT HOLDER>",
+            "<OWNER>",
+            "<name of author>",
+            "[Name of Organization]",
+            "[name of copyright owner]",
+        ]
+        .iter()
+        .any(|placeholder| self.text.contains(placeholder))
+    }
+
     pub fn render(&self, year: i32, author: &str) -> String {
         let y_str = year.to_string();
         self.text
@@ -155,8 +169,6 @@ pub static LICENSES: &[LicenseTemplate] = &[
 pub fn find_license(query: &str) -> Option<&'static LicenseTemplate> {
     let q = query.trim().to_lowercase();
     LICENSES.iter().find(|l| {
-        l.key.to_lowercase() == q
-            || l.spdx_id.to_lowercase() == q
-            || l.name.to_lowercase() == q
+        l.key.to_lowercase() == q || l.spdx_id.to_lowercase() == q || l.name.to_lowercase() == q
     })
 }

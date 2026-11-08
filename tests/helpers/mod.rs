@@ -15,5 +15,4 @@ impl TestWorkspace {
     pub fn path(&self) -> &Path {
         self.dir.path()
     }
-
 }

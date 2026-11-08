@@ -44,7 +44,10 @@ fn test_spdx_id_lookup() {
         find_license("BSD-3-Clause").map(|l| l.key),
         Some("bsd-3-clause")
     );
-    assert_eq!(find_license("Apache-2.0").map(|l| l.key), Some("apache-2.0"));
+    assert_eq!(
+        find_license("Apache-2.0").map(|l| l.key),
+        Some("apache-2.0")
+    );
     assert_eq!(find_license("CC0-1.0").map(|l| l.key), Some("cc0-1.0"));
 }
 

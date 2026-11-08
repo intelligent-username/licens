@@ -30,6 +30,10 @@ pub struct Cli {
     /// Year override
     #[arg(long, global = true)]
     pub year: Option<i32>,
+
+    /// Overwrite an existing regular file without asking
+    #[arg(long, global = true)]
+    pub force: bool,
 }
 
 #[derive(Subcommand, Debug)]
@@ -42,8 +46,4 @@ pub enum Commands {
         /// License identifier (e.g. mit, apache-2.0, gpl-3.0)
         license: String,
     },
-
-    /// Direct license name invocation (e.g. 'licens mit')
-    #[command(external_subcommand)]
-    External(Vec<String>),
 }
