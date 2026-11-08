@@ -44,6 +44,22 @@ fn renderer_supports_each_placeholder_form() {
 }
 
 #[test]
+fn renderer_preserves_placeholder_text_in_author() {
+    let template = LicenseTemplate {
+        key: "test",
+        spdx_id: "test",
+        name: "test",
+        category: LicenseCategory::Permissive,
+        text: "[year] [author] / [fullname]",
+    };
+    let author = "Ada [fullname] <OWNER>";
+    assert_eq!(
+        template.render(2026, author),
+        "2026 Ada [fullname] <OWNER> / Ada [fullname] <OWNER>"
+    );
+}
+
+#[test]
 fn test_all_catalog_licenses_resolve() {
     let expected_keys = [
         "mit",

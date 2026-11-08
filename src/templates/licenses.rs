@@ -25,36 +25,51 @@ pub struct LicenseTemplate {
     pub text: &'static str,
 }
 
+const YEAR_PLACEHOLDERS: &[&str] = &["[year]", "[Year]", "<YEAR>", "<year>", "[yyyy]"];
+const AUTHOR_PLACEHOLDERS: &[&str] = &[
+    "[author]",
+    "[fullname]",
+    "<COPYRIGHT HOLDER>",
+    "<OWNER>",
+    "<name of author>",
+    "[Name of Organization]",
+    "[name of copyright owner]",
+];
+
 impl LicenseTemplate {
     pub fn needs_author(&self) -> bool {
-        [
-            "[author]",
-            "[fullname]",
-            "<COPYRIGHT HOLDER>",
-            "<OWNER>",
-            "<name of author>",
-            "[Name of Organization]",
-            "[name of copyright owner]",
-        ]
-        .iter()
-        .any(|placeholder| self.text.contains(placeholder))
+        AUTHOR_PLACEHOLDERS
+            .iter()
+            .any(|placeholder| self.text.contains(placeholder))
     }
 
     pub fn render(&self, year: i32, author: &str) -> String {
-        let y_str = year.to_string();
-        self.text
-            .replace("[year]", &y_str)
-            .replace("[Year]", &y_str)
-            .replace("<YEAR>", &y_str)
-            .replace("<year>", &y_str)
-            .replace("[yyyy]", &y_str)
-            .replace("[author]", author)
-            .replace("[fullname]", author)
-            .replace("<COPYRIGHT HOLDER>", author)
-            .replace("<OWNER>", author)
-            .replace("<name of author>", author)
-            .replace("[Name of Organization]", author)
-            .replace("[name of copyright owner]", author)
+        let year = year.to_string();
+        let mut rendered = String::with_capacity(self.text.len());
+        let mut remaining = self.text;
+        loop {
+            let next = YEAR_PLACEHOLDERS
+                .iter()
+                .map(|p| (*p, year.as_str()))
+                .chain(AUTHOR_PLACEHOLDERS.iter().map(|p| (*p, author)))
+                .filter_map(|(placeholder, value)| {
+                    remaining
+                        .find(placeholder)
+                        .map(|index| (index, placeholder, value))
+                })
+                .min_by_key(|(index, _, _)| *index);
+            match next {
+                Some((index, placeholder, value)) => {
+                    rendered.push_str(&remaining[..index]);
+                    rendered.push_str(value);
+                    remaining = &remaining[index + placeholder.len()..];
+                }
+                None => {
+                    rendered.push_str(remaining);
+                    return rendered;
+                }
+            }
+        }
     }
 }
 
