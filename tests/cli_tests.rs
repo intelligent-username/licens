@@ -70,7 +70,7 @@ fn test_cli_generate_unsupported_license_returns_clean_error() {
         LicensError::UnsupportedLicense(key) => {
             assert_eq!(key, "fake-license-xyz");
         }
-        other => panic!("Expected UnsupportedLicense error, got {:?}", other),
+        other => panic!("Expected UnsupportedLicense error, got {other:?}"),
     }
 }
 

@@ -22,7 +22,7 @@ fn test_all_catalog_licenses_resolve() {
 
     for key in expected_keys {
         let lic = find_license(key);
-        assert!(lic.is_some(), "License key '{}' must resolve", key);
+        assert!(lic.is_some(), "License key '{key}' must resolve");
         let lic = lic.unwrap();
         assert!(!lic.name.is_empty());
         assert!(!lic.spdx_id.is_empty());

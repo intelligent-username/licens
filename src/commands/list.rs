@@ -3,8 +3,8 @@ use crate::templates::LICENSES;
 
 pub fn run() -> Result<()> {
     println!(
-        "{:<15} {:<15} {:<18} {}",
-        "KEY", "SPDX ID", "CATEGORY", "NAME"
+        "{:<15} {:<15} {:<18} NAME",
+        "KEY", "SPDX ID", "CATEGORY"
     );
     println!("{}", "-".repeat(70));
 
