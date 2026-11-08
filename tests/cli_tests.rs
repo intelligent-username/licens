@@ -250,3 +250,38 @@ fn executable_help_list_errors_and_nested_output() {
         assert!(!command(&ws).args(args).output().unwrap().status.success());
     }
 }
+
+#[cfg(any(unix, windows))]
+#[test]
+fn executable_force_rejects_symlink_destination() {
+    let ws = TestWorkspace::new();
+    let target = ws.path().join("original.txt");
+    let link = ws.path().join("LICENSE");
+    let original = b"Existing file must stay unchanged\n";
+    fs::write(&target, original).unwrap();
+
+    #[cfg(unix)]
+    let result = std::os::unix::fs::symlink(&target, &link);
+    #[cfg(windows)]
+    let result = std::os::windows::fs::symlink_file(&target, &link);
+
+    #[cfg(windows)]
+    if result.as_ref().err().and_then(|e| e.raw_os_error()) == Some(1314) {
+        eprintln!("Skipping symlink test: Windows requires Developer Mode or symlink privileges");
+        return;
+    }
+    result.expect("failed to create test symlink");
+
+    let output = command(&ws)
+        .args(["mit", "--author", "Test", "--year", "2026", "--force"])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("not a regular file"));
+    assert_eq!(fs::read(&target).unwrap(), original);
+    assert!(fs::symlink_metadata(&link)
+        .unwrap()
+        .file_type()
+        .is_symlink());
+    assert_eq!(fs::read_link(&link).unwrap(), target);
+}

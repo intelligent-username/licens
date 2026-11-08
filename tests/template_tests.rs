@@ -1,4 +1,47 @@
-use licens::templates::{find_license, LicenseCategory, LICENSES};
+use licens::templates::{find_license, LicenseCategory, LicenseTemplate, LICENSES};
+
+const YEAR_PLACEHOLDERS: &[&str] = &["[year]", "[Year]", "<YEAR>", "<year>", "[yyyy]"];
+const AUTHOR_PLACEHOLDERS: &[&str] = &[
+    "[author]",
+    "[fullname]",
+    "<COPYRIGHT HOLDER>",
+    "<OWNER>",
+    "<name of author>",
+    "[Name of Organization]",
+    "[name of copyright owner]",
+];
+
+#[test]
+fn renderer_supports_each_placeholder_form() {
+    for &(placeholder, expected, needs_author) in &[
+        ("[year]", "2026", false),
+        ("[Year]", "2026", false),
+        ("<YEAR>", "2026", false),
+        ("<year>", "2026", false),
+        ("[yyyy]", "2026", false),
+        ("[author]", "Ada Lovelace", true),
+        ("[fullname]", "Ada Lovelace", true),
+        ("<COPYRIGHT HOLDER>", "Ada Lovelace", true),
+        ("<OWNER>", "Ada Lovelace", true),
+        ("<name of author>", "Ada Lovelace", true),
+        ("[Name of Organization]", "Ada Lovelace", true),
+        ("[name of copyright owner]", "Ada Lovelace", true),
+    ] {
+        let template = LicenseTemplate {
+            key: "test",
+            spdx_id: "test",
+            name: "test",
+            category: LicenseCategory::Permissive,
+            text: placeholder,
+        };
+        assert_eq!(
+            template.render(2026, "Ada Lovelace"),
+            expected,
+            "{placeholder}"
+        );
+        assert_eq!(template.needs_author(), needs_author, "{placeholder}");
+    }
+}
 
 #[test]
 fn test_all_catalog_licenses_resolve() {
@@ -61,21 +104,13 @@ fn test_rendering_interpolates_all_placeholders() {
 
         let rendered = lic.render(year, author);
 
-        assert!(
-            !rendered.contains("[year]"),
-            "License '{}' left '[year]' unrendered",
-            lic.key
-        );
-        assert!(
-            !rendered.contains("[author]"),
-            "License '{}' left '[author]' unrendered",
-            lic.key
-        );
-        assert!(
-            !rendered.contains("[fullname]"),
-            "License '{}' left '[fullname]' unrendered",
-            lic.key
-        );
+        for placeholder in YEAR_PLACEHOLDERS.iter().chain(AUTHOR_PLACEHOLDERS) {
+            assert!(
+                !rendered.contains(placeholder),
+                "License '{}' left '{placeholder}' unrendered",
+                lic.key
+            );
+        }
     }
 }
 
