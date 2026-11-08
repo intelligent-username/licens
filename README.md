@@ -1,25 +1,47 @@
 # licens
 
-A small Rust CLI that adds a license file from a built-in list. It works offline and installs with Cargo.
+A small Rust CLI that adds a license file to your project. Works offline.
 
-## Install
+This README contains the following sections:
 
-Once published to crates.io:
+
+- [Installation](#installation)
+- [Usage](#usage)
+- [Customization](#customization)
+
+## Installation
+
+In order to use this CLI tool, make sure you first have [Rust](https://www.rust-lang.org/tools/install) installed on your machine. Then, you can install `licens` using Cargo, Rust's package manager.
+
+### Install From
+
+From crates.io, available universally on your system:
 
 ```sh
 cargo install licens --locked
 ```
 
-To install from a local checkout:
+This installs the latest version of licens from crates.io. The `--locked` flag ensures that Cargo uses the exact versions of dependencies specified in the `Cargo.lock` file.
+
+### Install From Source
+
+To install from a clone of this project, clone this repository:
+
+```
+git clone https://github.com/intelligent-username/licens
+cd licens
+```
 
 ```sh
 cargo install --path . --locked
 ```
 
-## Use
+This allows you to install it from the source code, which is useful if you're a developer or don't trust crates.io. Note that, for this to work, 
+
+## Usage
 
 ```sh
-licens list
+licens list # See the list of available licenses
 licens mit
 licens generate apache-2.0
 licens mit --author "Jane Doe" --email "jane@example.com" --year 2026
@@ -47,6 +69,8 @@ licens generate m --author "Jane Doe" --output LICENSE.md
 ```
 
 Aliases are case-insensitive. Names must start with an ASCII letter and contain only letters, digits, `-`, or `_`. Existing license keys, SPDX identifiers, full license names, and command names are reserved. Targets must be built-in licenses, not other aliases. Running `assign` again updates that alias without changing the others.
+
+`licens list` shows saved aliases beside their original license keys: originals in green and aliases in cyan. Redirected output stays plain text; setting `NO_COLOR=1` also disables colors.
 
 Aliases are stored in a small `licens/aliases.json` file under your user configuration directory: `%APPDATA%` on Windows, `~/Library/Application Support` on macOS, and `$XDG_CONFIG_HOME` (or `~/.config`) on Linux. They are not stored in your project. Built-in licenses work independently of this file.
 

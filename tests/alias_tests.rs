@@ -275,3 +275,26 @@ fn alias_generation_keeps_existing_file_protection() {
     assert!(String::from_utf8_lossy(&output.stderr).contains("--force"));
     assert_eq!(fs::read(path).unwrap(), b"keep this");
 }
+
+#[test]
+fn list_shows_saved_aliases_beside_originals_without_color_when_captured() {
+    let config = tempfile::tempdir().unwrap();
+    let first = tempfile::tempdir().unwrap();
+    let second = tempfile::tempdir().unwrap();
+    for assignment in ["m=mit", "mine=mit", "a=apache-2.0"] {
+        success(&run(config.path(), first.path(), &["assign", assignment]));
+    }
+    let path = config_file(config.path());
+    let original_config = fs::read(&path).unwrap();
+    let output = run(config.path(), second.path(), &["list"]);
+    success(&output);
+    let text = String::from_utf8(output.stdout).unwrap();
+    assert!(text.contains("ORIGINAL") && text.contains("ALIASES"));
+    let mit_row = text.lines().find(|row| row.starts_with("mit ")).unwrap();
+    assert!(mit_row.contains("m, mine"));
+    assert!(text
+        .lines()
+        .any(|row| row.starts_with("apache-2.0") && row.contains(" a ")));
+    assert!(!text.contains('\x1b'));
+    assert_eq!(fs::read(path).unwrap(), original_config);
+}
