@@ -44,7 +44,12 @@ impl LicenseTemplate {
     }
 
     pub fn render(&self, year: i32, author: &str) -> String {
-        let year = year.to_string();
+        self.render_optional(Some(year), Some(author))
+    }
+
+    pub fn render_optional(&self, year: Option<i32>, author: Option<&str>) -> String {
+        let year = year.map(|n| n.to_string()).unwrap_or_default();
+        let author = author.unwrap_or("");
         let mut rendered = String::with_capacity(self.text.len());
         let mut remaining = self.text;
         loop {

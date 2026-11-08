@@ -20,6 +20,9 @@ fn run() -> Result<()> {
         Some(Commands::Assign { assignment }) => {
             licens::aliases::assign(&assignment)?;
         }
+        Some(Commands::Config { assignments }) => {
+            licens::preferences::configure(&assignments)?;
+        }
         Some(Commands::List) => {
             run_list()?;
         }

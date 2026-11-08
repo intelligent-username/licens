@@ -60,6 +60,74 @@ fn renderer_preserves_placeholder_text_in_author() {
 }
 
 #[test]
+fn optional_renderer_removes_each_placeholder_without_touching_surroundings() {
+    for (placeholder, text) in YEAR_PLACEHOLDERS.iter().chain(AUTHOR_PLACEHOLDERS).zip([
+        "unchanged prose ([year]), punctuation.\n",
+        "unchanged prose ([Year]), punctuation.\n",
+        "unchanged prose (<YEAR>), punctuation.\n",
+        "unchanged prose (<year>), punctuation.\n",
+        "unchanged prose ([yyyy]), punctuation.\n",
+        "unchanged prose ([author]), punctuation.\n",
+        "unchanged prose ([fullname]), punctuation.\n",
+        "unchanged prose (<COPYRIGHT HOLDER>), punctuation.\n",
+        "unchanged prose (<OWNER>), punctuation.\n",
+        "unchanged prose (<name of author>), punctuation.\n",
+        "unchanged prose ([Name of Organization]), punctuation.\n",
+        "unchanged prose ([name of copyright owner]), punctuation.\n",
+    ]) {
+        let template = LicenseTemplate {
+            key: "test",
+            spdx_id: "test",
+            name: "test",
+            category: LicenseCategory::Permissive,
+            text,
+        };
+        assert_eq!(
+            template.render_optional(None, None),
+            "unchanged prose (), punctuation.\n"
+        );
+        let replacement = if YEAR_PLACEHOLDERS.contains(placeholder) {
+            "2030"
+        } else {
+            "Ada"
+        };
+        assert_eq!(
+            template.render_optional(Some(2030), Some("Ada")),
+            format!("unchanged prose ({replacement}), punctuation.\n"),
+        );
+    }
+}
+
+#[test]
+fn optional_renderer_handles_independent_fields_and_does_not_rescan_author() {
+    let template = LicenseTemplate {
+        key: "test",
+        spdx_id: "test",
+        name: "test",
+        category: LicenseCategory::Permissive,
+        text: "before [year] / [author]; after\n",
+    };
+    for (year, author, expected) in [
+        (None, None, "before  / ; after\n"),
+        (Some(2030), None, "before 2030 / ; after\n"),
+        (None, Some("Ada"), "before  / Ada; after\n"),
+        (Some(2030), Some("Ada"), "before 2030 / Ada; after\n"),
+        (
+            None,
+            Some("[year] <OWNER>"),
+            "before  / [year] <OWNER>; after\n",
+        ),
+        (
+            Some(2030),
+            Some("[year] <OWNER>"),
+            "before 2030 / [year] <OWNER>; after\n",
+        ),
+    ] {
+        assert_eq!(template.render_optional(year, author), expected);
+    }
+}
+
+#[test]
 fn test_all_catalog_licenses_resolve() {
     let expected_keys = [
         "mit",

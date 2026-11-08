@@ -1,49 +1,18 @@
 use std::collections::BTreeMap;
-use std::env;
-use std::fs::{self, OpenOptions};
-use std::io::{self, Write};
-use std::path::{Path, PathBuf};
 
 use crate::error::{LicensError, Result};
+use crate::preferences;
 use crate::templates::{find_license, LicenseTemplate};
 
-fn config_path() -> Result<PathBuf> {
-    #[cfg(windows)]
-    let base = env::var_os("APPDATA").map(PathBuf::from);
-    #[cfg(target_os = "macos")]
-    let base =
-        env::var_os("HOME").map(|home| PathBuf::from(home).join("Library/Application Support"));
-    #[cfg(not(any(windows, target_os = "macos")))]
-    let base = env::var_os("XDG_CONFIG_HOME")
-        .filter(|value| !value.is_empty())
-        .map(PathBuf::from)
-        .or_else(|| env::var_os("HOME").map(|home| PathBuf::from(home).join(".config")));
-
-    base.filter(|path| path.is_absolute())
-        .map(|path| path.join("licens/aliases.json"))
-        .ok_or_else(|| {
-            LicensError::Alias("Cannot locate your user configuration directory.".into())
-        })
-}
-
-fn load(path: &Path) -> Result<BTreeMap<String, String>> {
-    match fs::read(path) {
-        Ok(bytes) => serde_json::from_slice(&bytes).map_err(|error| {
-            LicensError::Alias(format!(
-                "Cannot read aliases at '{}': {error}",
-                path.display()
-            ))
-        }),
-        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(BTreeMap::new()),
-        Err(error) => Err(LicensError::Alias(format!(
-            "Cannot read aliases at '{}': {error}",
-            path.display()
-        ))),
-    }
-}
-
 pub fn find_alias(query: &str) -> Result<Option<&'static LicenseTemplate>> {
-    let aliases = load(&config_path()?)?;
+    let config = preferences::load()?;
+    find_alias_in(&config.aliases, query)
+}
+
+pub fn find_alias_in(
+    aliases: &BTreeMap<String, String>,
+    query: &str,
+) -> Result<Option<&'static LicenseTemplate>> {
     match aliases.get(&query.trim().to_ascii_lowercase()) {
         Some(target) => find_license(target).map(Some).ok_or_else(|| {
             LicensError::Alias(format!(
@@ -64,7 +33,7 @@ pub fn assign(assignment: &str) -> Result<()> {
     if find_license(&name).is_some()
         || matches!(
             name.as_str(),
-            "list" | "generate" | "assign" | "help" | "version"
+            "list" | "generate" | "assign" | "config" | "help" | "version"
         )
     {
         return Err(LicensError::Alias(format!(
@@ -80,32 +49,42 @@ pub fn assign(assignment: &str) -> Result<()> {
     }
     let template = find_license(target)
         .ok_or_else(|| LicensError::UnsupportedLicense(target.trim().to_owned()))?;
-    let path = config_path()?;
-    let mut aliases = load(&path)?;
-    aliases.insert(name.clone(), template.key.to_owned());
-    let bytes = serde_json::to_vec_pretty(&aliases)
-        .map_err(|error| LicensError::Alias(error.to_string()))?;
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)?;
-    }
-    let temporary = path.with_extension(format!("{}.tmp", std::process::id()));
-    let mut file = OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(&temporary)?;
-    let saved = (|| -> io::Result<()> {
-        file.write_all(&bytes)?;
-        file.write_all(b"\n")?;
-        drop(file);
-        fs::rename(&temporary, &path)
-    })();
-    if saved.is_err() {
-        let _ = fs::remove_file(&temporary);
-    }
-    saved?;
+    let mut config = preferences::load()?;
+    config.aliases.insert(name.clone(), template.key.to_owned());
+    preferences::save(&config)?;
     println!(
         "Assigned '{name}' to '{}'. Use 'licens {name}' in any project.",
         template.key
     );
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn snapshot_lookup_normalizes_query_and_validates_target() {
+        let aliases = BTreeMap::from([
+            ("m".into(), "mit".into()),
+            ("config".into(), "mit".into()),
+            ("bad".into(), "unsupported".into()),
+        ]);
+        assert_eq!(find_alias_in(&aliases, " M ").unwrap().unwrap().key, "mit");
+        assert_eq!(
+            find_alias_in(&aliases, "config").unwrap().unwrap().key,
+            "mit"
+        );
+        assert!(find_alias_in(&aliases, "missing").unwrap().is_none());
+        let error = find_alias_in(&aliases, "bad").err().unwrap();
+        assert!(matches!(error, LicensError::Alias(_)));
+        assert!(error.to_string().contains("unsupported license"));
+    }
+
+    #[test]
+    fn config_is_reserved_before_any_storage_access() {
+        let error = assign(" CONFIG =mit").unwrap_err();
+        assert!(matches!(error, LicensError::Alias(_)));
+        assert!(error.to_string().contains("reserved"));
+    }
 }

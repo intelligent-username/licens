@@ -4,6 +4,7 @@ use std::path::Path;
 
 use crate::config::AuthorInfo;
 use crate::error::{LicensError, Result};
+use crate::preferences::{self, UserConfig};
 use crate::templates::find_license;
 
 pub struct GenerateOptions {
@@ -30,21 +31,46 @@ fn confirm_overwrite(input: &mut impl BufRead, output: &mut impl Write) -> io::R
 }
 
 pub fn run(opts: GenerateOptions) -> Result<()> {
-    let template = match find_license(&opts.license_key) {
+    let builtin = find_license(&opts.license_key);
+    let snapshot = match preferences::load() {
+        Ok(config) => config,
+        Err(LicensError::Alias(_)) if builtin.is_some() => UserConfig::default(),
+        Err(error) => return Err(error),
+    };
+    let template = match builtin {
         Some(template) => template,
-        None => crate::aliases::find_alias(&opts.license_key)?
+        None => crate::aliases::find_alias_in(&snapshot.aliases, &opts.license_key)?
             .ok_or_else(|| LicensError::UnsupportedLicense(opts.license_key.clone()))?,
     };
 
-    let author_info = AuthorInfo::resolve(opts.author_name, opts.author_email, opts.year);
-    let author_display = if let Some(ref email) = author_info.email {
-        format!("{} <{}>", author_info.name, email)
-    } else {
-        author_info.name.clone()
+    let author_info = AuthorInfo::resolve_with_preferences(
+        opts.author_name,
+        opts.author_email,
+        opts.year,
+        &snapshot.preferences,
+    )?;
+    let author_display = match (&author_info.name, &author_info.email) {
+        (Some(name), Some(email)) => format!("{name} <{email}>"),
+        (Some(name), None) => name.clone(),
+        (None, Some(email)) => email.clone(),
+        (None, None) => String::new(),
     };
 
-    let content = template.render(author_info.year, &author_display);
-    let dest_path = opts.output_path.unwrap_or_else(|| "LICENSE".to_string());
+    let content = template.render_optional(
+        author_info.year,
+        (!author_display.is_empty()).then_some(author_display.as_str()),
+    );
+    let dest_path = match opts.output_path {
+        Some(value) if !value.trim().is_empty() => value,
+        Some(_) => "LICENSE".to_owned(),
+        None => snapshot
+            .preferences
+            .get("output")
+            .map(|value| value.trim())
+            .filter(|value| !value.is_empty() && *value != "--ignore")
+            .unwrap_or("LICENSE")
+            .to_owned(),
+    };
     let path = Path::new(&dest_path);
 
     if let Some(parent) = path.parent() {
@@ -77,9 +103,18 @@ pub fn run(opts: GenerateOptions) -> Result<()> {
     if author_info.missing_author && template.needs_author() {
         eprintln!("Author parameter is missing in the license. Set Git user.name (git config --global user.name \"Your Name\"), set package.json's author or GIT_AUTHOR_NAME, or pass --author \"Your Name\" for future use. Otherwise, edit the created license file to replace <author>.");
     }
+    let author_suffix = if author_display.is_empty() {
+        String::new()
+    } else {
+        format!(" for {author_display}")
+    };
+    let year_suffix = author_info
+        .year
+        .map(|year| format!(" ({year})"))
+        .unwrap_or_default();
     println!(
-        "Successfully generated {} file at '{}' for {} ({}).",
-        template.spdx_id, dest_path, author_display, author_info.year
+        "Successfully generated {} file at '{}'{}{}.",
+        template.spdx_id, dest_path, author_suffix, year_suffix
     );
 
     Ok(())

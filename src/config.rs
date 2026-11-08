@@ -1,11 +1,21 @@
 use chrono::Datelike;
-use std::{env, fs, process::Command};
+use std::{collections::BTreeMap, env, fs, process::Command};
+
+use crate::error::{LicensError, Result};
 
 #[derive(Debug, Clone)]
 pub struct AuthorInfo {
     pub name: String,
     pub email: Option<String>,
     pub year: i32,
+    pub missing_author: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct ResolvedAuthor {
+    pub name: Option<String>,
+    pub email: Option<String>,
+    pub year: Option<i32>,
     pub missing_author: bool,
 }
 
@@ -22,39 +32,90 @@ impl AuthorInfo {
         email_override: Option<String>,
         year_override: Option<i32>,
     ) -> Self {
-        let mut name = nonempty(name_override);
-        let mut email = nonempty(email_override);
-        if name.is_none() {
-            name = Self::git_value("user.name");
-        }
-        if email.is_none() {
-            email = Self::git_value("user.email");
-        }
-        if name.is_none() || email.is_none() {
-            if let Some((pkg_name, pkg_email)) = Self::read_package_json() {
-                if name.is_none() {
-                    name = nonempty(pkg_name);
-                }
-                if email.is_none() {
-                    email = nonempty(pkg_email);
-                }
-            }
-        }
-        if name.is_none() {
-            name = ["GIT_AUTHOR_NAME", "USER", "USERNAME"]
-                .iter()
-                .find_map(|key| nonempty(env::var(key).ok()));
-        }
-        if email.is_none() {
-            email = nonempty(env::var("GIT_AUTHOR_EMAIL").ok());
-        }
-        let missing_author = name.is_none();
+        let (name, email, missing_author) =
+            Self::resolve_identity(name_override, email_override, false, false);
         Self {
             name: name.unwrap_or_else(|| "<author>".to_owned()),
             email,
             year: year_override.unwrap_or_else(|| chrono::Utc::now().year()),
             missing_author,
         }
+    }
+
+    pub fn resolve_with_preferences(
+        name_override: Option<String>,
+        email_override: Option<String>,
+        year_override: Option<i32>,
+        preferences: &BTreeMap<String, String>,
+    ) -> Result<ResolvedAuthor> {
+        let year = match year_override {
+            Some(year) => Some(year),
+            None => match preferences.get("year").map(|value| value.trim()) {
+                Some("--ignore") => None,
+                Some(value) if !value.is_empty() => Some(value.parse::<i32>().map_err(|_| {
+                    LicensError::Config(
+                        "Preference 'year' must be an i32 integer or '--ignore'.".into(),
+                    )
+                })?),
+                _ => Some(chrono::Utc::now().year()),
+            },
+        };
+        let identity = |explicit: Option<String>, key: &str| match explicit {
+            Some(value) => (nonempty(Some(value)), false),
+            None => match nonempty(preferences.get(key).cloned()) {
+                Some(value) if value == "--ignore" => (None, true),
+                value => (value, false),
+            },
+        };
+        let (name, suppress_name) = identity(name_override, "author");
+        let (email, suppress_email) = identity(email_override, "email");
+        let (name, email, missing_author) =
+            Self::resolve_identity(name, email, suppress_name, suppress_email);
+        Ok(ResolvedAuthor {
+            name,
+            email,
+            year,
+            missing_author,
+        })
+    }
+
+    fn resolve_identity(
+        name: Option<String>,
+        email: Option<String>,
+        suppress_name: bool,
+        suppress_email: bool,
+    ) -> (Option<String>, Option<String>, bool) {
+        let mut name = nonempty(name);
+        let mut email = nonempty(email);
+        if !suppress_name && name.is_none() {
+            name = Self::git_value("user.name");
+        }
+        if !suppress_email && email.is_none() {
+            email = Self::git_value("user.email");
+        }
+        if (!suppress_name && name.is_none()) || (!suppress_email && email.is_none()) {
+            if let Some((pkg_name, pkg_email)) = Self::read_package_json() {
+                if !suppress_name && name.is_none() {
+                    name = nonempty(pkg_name);
+                }
+                if !suppress_email && email.is_none() {
+                    email = nonempty(pkg_email);
+                }
+            }
+        }
+        if !suppress_name && name.is_none() {
+            name = ["GIT_AUTHOR_NAME", "USER", "USERNAME"]
+                .iter()
+                .find_map(|key| nonempty(env::var(key).ok()));
+        }
+        if !suppress_email && email.is_none() {
+            email = nonempty(env::var("GIT_AUTHOR_EMAIL").ok());
+        }
+        let missing_author = !suppress_name && name.is_none();
+        if missing_author {
+            name = Some("<author>".to_owned());
+        }
+        (name, email, missing_author)
     }
 
     fn git_value(key: &str) -> Option<String> {

@@ -44,6 +44,12 @@ pub enum Commands {
         assignment: String,
     },
 
+    /// Save user-wide generation preferences (e.g. author=Name email=--ignore)
+    Config {
+        #[arg(required = true, num_args = 1..)]
+        assignments: Vec<String>,
+    },
+
     /// List all supported license templates
     List,
 
