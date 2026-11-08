@@ -58,4 +58,4 @@ The release executable is built for size. Cargo's compiler and build cache are s
 
 ## License
 
-The package metadata declares MIT. The project's root license and any required upstream attribution still need to be confirmed before release.
+This project is licensed under the [MIT License](LICENSE).
