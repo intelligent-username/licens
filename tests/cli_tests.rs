@@ -209,3 +209,44 @@ fn executable_git_local_and_global_identity() {
         .unwrap()
         .contains("Local Name <global@example.com>"));
 }
+
+#[test]
+fn executable_help_list_errors_and_nested_output() {
+    let ws = TestWorkspace::new();
+    for arg in ["--help", "--version", "list"] {
+        let output = command(&ws).arg(arg).output().unwrap();
+        assert!(output.status.success());
+        if arg == "list" {
+            let text = String::from_utf8(output.stdout).unwrap();
+            for template in licens::templates::LICENSES {
+                assert!(text.contains(template.key));
+            }
+        }
+    }
+    let output = command(&ws)
+        .args([
+            "generate",
+            "mit",
+            "--author",
+            "Test",
+            "--year",
+            "2026",
+            "--output",
+            "nested/LICENSE",
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(ws.path().join("nested/LICENSE").exists());
+    for args in [
+        &["missing-license"][..],
+        &["mit", "--bogus"][..],
+        &["mit", "--output", "nested"][..],
+    ] {
+        assert!(!command(&ws).args(args).output().unwrap().status.success());
+    }
+}

@@ -57,9 +57,7 @@ fn test_rendering_interpolates_all_placeholders() {
     let author = "Ada Lovelace <ada@example.com>";
 
     for lic in LICENSES {
-        if lic.text.trim().is_empty() {
-            continue;
-        }
+        assert!(!lic.text.trim().is_empty(), "{} is empty", lic.key);
 
         let rendered = lic.render(year, author);
 
@@ -79,6 +77,17 @@ fn test_rendering_interpolates_all_placeholders() {
             lic.key
         );
     }
+}
+
+#[test]
+fn catalog_keys_and_spdx_identifiers_are_unique() {
+    let mut keys = std::collections::HashSet::new();
+    let mut identifiers = std::collections::HashSet::new();
+    for lic in LICENSES {
+        assert!(keys.insert(lic.key.to_ascii_lowercase()));
+        assert!(identifiers.insert(lic.spdx_id.to_ascii_lowercase()));
+    }
+    assert_eq!(LICENSES.len(), 15);
 }
 
 #[test]
